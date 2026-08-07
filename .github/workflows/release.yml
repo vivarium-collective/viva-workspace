@@ -1,0 +1,48 @@
+name: Publish to PyPI
+
+# Publishes viva-workspace to PyPI. Two ways to trigger:
+#   - push a tag `vX.Y.Z` (must match pyproject version), or
+#   - run manually via the Actions tab / `gh workflow run release.yml`.
+#
+# Auth uses PyPI Trusted Publishing (OIDC) — no token stored anywhere.
+# One-time setup on PyPI (https://pypi.org/manage/account/publishing/):
+#   PyPI project: viva-workspace | Owner: vivarium-collective
+#   Repository:   viva-workspace | Workflow: release.yml | Environment: release
+# To use a token instead: delete `permissions.id-token` + add
+#   `with: { password: ${{ secrets.PYPI_API_TOKEN }} }` to the publish step.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv and Python
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify tag matches pyproject version (tag pushes only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          pyproject_version=$(uv version --short)
+          if [ "$tag_version" != "$pyproject_version" ]; then
+            echo "Tag version ($tag_version) != pyproject version ($pyproject_version)"
+            exit 1
+          fi
+
+      - name: Build distributions
+        run: uv build --out-dir dist && ls -1 dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
