@@ -38,6 +38,7 @@ Example ``workspace.yaml`` nesting research dirs under ``workspace/``::
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator, Mapping, Optional, Union
@@ -45,6 +46,18 @@ from typing import Iterator, Mapping, Optional, Union
 import yaml
 
 from .naming import package_slug
+
+# Optional absolute-path override for the `.pbg` directory (run-history db,
+# per-run emitter scratch/zarr data, registry-catalog cache, ...). When set,
+# ALL of `.pbg` resolves here instead of under the workspace root — intended
+# for moving run-time scratch I/O off a network-mounted workspace root (e.g.
+# Azure Files NFS) onto fast local/ephemeral storage. A composite run's async
+# xarray-emitter writer threads have been observed to hang indefinitely
+# (blocked in the kernel's NFS RPC wait state) under certain NFS backends;
+# this lets a deployment redirect that I/O without changing workspace.yaml or
+# any call site that already goes through `WorkspacePaths.pbg`.
+# Unset/empty preserves today's behavior (workspace-root-relative) exactly.
+_PBG_DIR_ENV = "VIVARIUM_PBG_DIR"
 
 # The canonical flat layout — the single source of truth for directory names.
 # Keys are logical names used throughout the codebase; values are the default
@@ -169,9 +182,18 @@ class WorkspacePaths:
         return wp
 
     def dir(self, name: str) -> Path:
-        """Absolute path to the directory registered under logical ``name``."""
+        """Absolute path to the directory registered under logical ``name``.
+
+        ``name == "pbg"`` honors ``$VIVARIUM_PBG_DIR`` as an absolute-path
+        override (see ``_PBG_DIR_ENV``), bypassing the workspace root
+        entirely. Every other key is unaffected.
+        """
         if name not in self._layout:
             raise KeyError(f"unknown workspace directory: {name!r}")
+        if name == "pbg":
+            override = os.environ.get(_PBG_DIR_ENV, "").strip()
+            if override:
+                return Path(override)
         return self.root / self._layout[name]
 
     def rel(self, name: str) -> str:
