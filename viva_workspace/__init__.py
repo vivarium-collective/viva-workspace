@@ -1,6 +1,6 @@
 """viva-workspace — the shared source of truth for workspace-layout logic.
 
-One dependency-light (stdlib + pyyaml) package consolidating the workspace-layout
+One dependency-light (stdlib + pyyaml + jsonschema) package consolidating the workspace-layout
 helpers that vivarium-workbench, viva-superpowers and v2ecoli each reimplemented:
 the ``layout:`` map + derived directories (:class:`WorkspacePaths`), the
 root-walker (:func:`find_workspace_root`), the single layout-aware study

@@ -12,8 +12,9 @@ consolidates them into one dependency-light module so the layout is defined once
 
 `vivarium-workbench` is deliberately **AI-free** (all AI lives in
 `viva-superpowers`). To be safe for the workbench to depend on, this package uses
-**stdlib + `pyyaml` only** — no `process_bigraph` / `bigraph_schema`, no web
-framework, no AI deps.
+**stdlib + `pyyaml` + `jsonschema`** — no `process_bigraph` / `bigraph_schema`, no web
+framework, no AI deps. (`jsonschema` backs `workspace_yaml`'s schema validation;
+it is a light, framework-free validator.)
 
 ## Public API
 
