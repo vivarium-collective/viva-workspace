@@ -59,6 +59,20 @@ def test_falls_back_to_last_run_when_none_completed():
     assert canonical_run(spec)["name"] == "b"
 
 
+def test_newest_completed_with_float_and_none_timestamps():
+    """Runs may carry float epoch timestamps and None (genesis-style). The sort
+    must not compare str vs float (TypeError); the newest float still wins and a
+    None timestamp never beats a real one."""
+    spec = {
+        "runs": [
+            {"name": "old", "status": "completed", "timestamp": 1792285919.1, "outcomes": {"x": 1}},
+            {"name": "none", "status": "completed", "timestamp": None, "outcomes": {"x": 2}},
+            {"name": "new", "status": "completed", "timestamp": 1792444548.1, "outcomes": {"x": 3}},
+        ]
+    }
+    assert canonical_run(spec)["name"] == "new"
+
+
 def test_empty():
     assert canonical_run({"runs": []}) is None
     assert canonical_outcomes({}) == {}
