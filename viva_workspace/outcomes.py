@@ -35,6 +35,21 @@ def _runs_of(spec_or_runs: SpecOrRuns) -> list[dict]:
     return [r for r in runs if isinstance(r, dict)]
 
 
+def _timestamp_key(run: dict):
+    """A total order over heterogeneous ``timestamp`` values so the newest run can
+    be picked without comparing incompatible types. Runs may carry float epoch
+    seconds, ISO strings, or ``None`` within one study; a naive ``ts or ""`` mixes
+    str and float and raises ``TypeError``. Ranks None < str < numeric so a real
+    timestamp always beats a missing one, and homogeneous float/ISO sets keep
+    their natural (chronological) order."""
+    ts = run.get("timestamp")
+    if isinstance(ts, (int, float)) and not isinstance(ts, bool):
+        return (2, float(ts), "")
+    if ts:
+        return (1, 0.0, str(ts))
+    return (0, 0.0, "")
+
+
 def canonical_run(spec_or_runs: SpecOrRuns) -> Optional[dict]:
     """The run whose outcomes are authoritative: an explicit ``canonical: true``
     (last one wins), else the newest completed run by ``timestamp``, else the last
@@ -47,7 +62,7 @@ def canonical_run(spec_or_runs: SpecOrRuns) -> Optional[dict]:
         return flagged[-1]
     completed = [r for r in runs if str(r.get("status", "")).lower() in _COMPLETE]
     if completed:
-        return max(completed, key=lambda r: r.get("timestamp") or "")
+        return max(completed, key=_timestamp_key)
     return runs[-1]
 
 
